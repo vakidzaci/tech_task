@@ -6,6 +6,7 @@ from tika import parser
 from pytesseract import image_to_string
 from flask_sqlalchemy import SQLAlchemy
 from passlib.hash import sha256_crypt
+from text_extractor import text_extractor
 import os
 
 app = Flask(__name__)
@@ -22,6 +23,23 @@ class User(db.Model):
     def __init__(self, username, password):
         self.username = username
         self.password = password
+
+class Document(db.Model):
+    __tablename__ = 'documents'
+    rowid = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(80), nullable=False)
+    content = db.Column(db.String, nullable=False)
+    user_id = db.Column(db.Integer, nullable=False)
+    def __init__(self, filename, content, user_id):
+        self.filename = filename
+        self.content = content
+        self.user_id = user_id
+
+class Signature(db.Model):
+    __tablename__ = 'signatures'
+    rowid = db.Column(db.Integer, primary_key=True)
+    file_path = db.Column(db.String(120), nullable=False)
+    document_id = db.Column(db.Integer, nullable=False)
 
 @app.route('/login', methods=[ "POST"])
 def login():
@@ -76,9 +94,26 @@ def upload():
     # print(request.args)
     # print(request.get_data())
     data = request.form
-    file = request.files['image_file']
-    get_signatures(convert_from_bytes(file.read()))
-    return {"status":200}
+    user_id = request.form['user_id']
+    file = request.files['file']
+    text,links = get_signatures(convert_from_bytes(file.read()))
+    doc = Document(file.filename, text, user_id)
+    db.session.add(doc)
+    # db.session.flush()
+    db.session.commit()
+    return {"status":200,"doc_id":doc.rowid,"links":links}
+
+@app.route('/upload_doc', methods=['POST'])
+def upload_doc():
+    data = request.form
+    user_id = request.form['user_id']
+    file = request.files['file']
+    text = text_extractor(file.read())
+    doc = Document(file.filename,text,user_id)
+    db.session.add(doc)
+    # db.session.flush()
+    db.session.commit()
+    return {"message":"OK","status":200,"document_id":doc.rowid}
 
 # @app.route('/upload_file'):
 

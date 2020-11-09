@@ -4,15 +4,19 @@ from skimage import measure, morphology
 from skimage.color import label2rgb
 from skimage.measure import regionprops
 import numpy as np
-
+import pytesseract
 # read the input image
 from pdf2image import convert_from_path
 
 
-def get_signatures(pdf_images):
+def get_signatures(pdf_images,language = None):
     # pdf_images = convert_from_path('./inputs_pdf/in{}.pdf'.format(num))
     # or_img = cv2.imread('./inputs/in{}.jpg'.format(num))
     or_img = np.array(pdf_images[0])
+
+    img_rgb = cv2.cvtColor(or_img, cv2.COLOR_BGR2RGB)
+    text =  pytesseract.image_to_string(img_rgb, lang=language)
+
     gray = cv2.cvtColor(or_img, cv2.COLOR_BGR2GRAY)
     img = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_MEAN_C,\
                 cv2.THRESH_BINARY,11,2)
@@ -80,6 +84,7 @@ def get_signatures(pdf_images):
     image = cv2.morphologyEx(image, cv2.MORPH_CLOSE, rect_kernel)
     contours, hier = cv2.findContours(image, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
 
+    links = []
     if len(contours) != 0:
         num_sig = 0
         for c in contours:
@@ -91,5 +96,6 @@ def get_signatures(pdf_images):
                 # print(np.sum(cv2.threshold(gray[y:y+h,x:x+w-1], 127, 255, cv2.THRESH_BINARY)[1]  )/img[y:y+h,x:x+w-1].size)
                 cv2.rectangle(or_img,(x,y),(x+w,y+h),(0,255,0),1)
                 cv2.imwrite("./outputs/output_{}.jpg".format(num_sig), or_img[y:y+h,x:x+w-1])
-
+                links.append("./outputs/output_{}.jpg".format(num_sig))
+    return text,links
 # cv2.imwrite("./outputs/output{}.png".format(num), or_img)
