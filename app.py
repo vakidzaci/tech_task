@@ -40,6 +40,9 @@ class Signature(db.Model):
     rowid = db.Column(db.Integer, primary_key=True)
     file_path = db.Column(db.String(120), nullable=False)
     document_id = db.Column(db.Integer, nullable=False)
+    def __init__(self,file_path,document_id):
+        self.file_path = file_path
+        self.document_id = document_id
 
 @app.route('/login', methods=[ "POST"])
 def login():
@@ -89,6 +92,13 @@ def get_users():
         print(row.username)
     return 'Hi this is list'
 
+from flask import send_file
+@app.route('/get_image/<url>')
+def get_image(url):
+    filename = 'outputs/' + url
+    return send_file(filename, mimetype='image/jpg')
+
+
 @app.route('/upload', methods=["POST"])
 def upload():
     # print(request.args)
@@ -100,6 +110,11 @@ def upload():
     doc = Document(file.filename, text, user_id)
     db.session.add(doc)
     # db.session.flush()
+    db.session.commit()
+
+    for link in links:
+        sign = Signature(link,doc.rowid)
+        db.session.add(sign)
     db.session.commit()
     return {"status":200,"doc_id":doc.rowid,"links":links}
 
@@ -120,4 +135,4 @@ def upload_doc():
 
 if __name__ == '__main__':
     app.secret_key = os.urandom(24)
-    app.run(debug=True)
+    app.run(debug=True,port=8000,host="0.0.0.0")

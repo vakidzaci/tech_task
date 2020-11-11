@@ -5,6 +5,8 @@ from skimage.color import label2rgb
 from skimage.measure import regionprops
 import numpy as np
 import pytesseract
+import uuid
+
 # read the input image
 from pdf2image import convert_from_path
 
@@ -59,7 +61,7 @@ def get_signatures(pdf_images,language = None):
     # experimental-based ratio calculation, modify it for your cases
     # a4_constant is used as a threshold value to remove connected pixels
     # are smaller than a4_constant for A4 size scanned documents
-    a4_constant = ((average/84.0)*250.0)+1000
+    a4_constant = ((average/84.0)*250.0) + 1200
     # print("a4_constant: " + str(a4_constant))
 
     # remove the connected pixels are smaller than a4_constant
@@ -86,16 +88,18 @@ def get_signatures(pdf_images,language = None):
 
     links = []
     if len(contours) != 0:
-        num_sig = 0
         for c in contours:
+            filename = str(uuid.uuid4())
             x,y,w,h = cv2.boundingRect(c)
-            if(h > 20 and w > 20 and h < 200 and w < 200 and np.sum(cv2.threshold(gray[y:y+h,x:x+w-1], 127, 255, cv2.THRESH_BINARY)[1]  )/gray[y:y+h,x:x+w-1].size > 150):
-                num_sig += 1
-                print("output_{}.jpg".format(num_sig))
+            # print(np.sum(cv2.threshold(gray[y:y+h,x:x+w-1], 127, 255, cv2.THRESH_BINARY)[1]  )/gray[y:y+h,x:x+w-1].size)
+            thrsh = np.sum(cv2.threshold(gray[y:y+h,x:x+w-1], 127, 255, cv2.THRESH_BINARY)[1]  )/gray[y:y+h,x:x+w-1].size
+            print(thrsh,h,w)
+            if(h > 30 and w > 30  and h < 700 and w < 700 and  thrsh > 210):
+                print("{}.jpg".format(filename))
                 # print(np.sum(img[y:y+h,x:x+w-1])/img[y:y+h,x:x+w-1].size)
                 # print(np.sum(cv2.threshold(gray[y:y+h,x:x+w-1], 127, 255, cv2.THRESH_BINARY)[1]  )/img[y:y+h,x:x+w-1].size)
                 cv2.rectangle(or_img,(x,y),(x+w,y+h),(0,255,0),1)
-                cv2.imwrite("./outputs/output_{}.jpg".format(num_sig), or_img[y:y+h,x:x+w-1])
-                links.append("./outputs/output_{}.jpg".format(num_sig))
+                cv2.imwrite("./outputs/{}.jpg".format(filename), or_img[y:y+h,x:x+w-1])
+                links.append("{}.jpg".format(filename))
     return text,links
 # cv2.imwrite("./outputs/output{}.png".format(num), or_img)
